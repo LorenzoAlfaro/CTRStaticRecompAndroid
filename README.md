@@ -12,7 +12,10 @@ is for personal use only and must not be distributed.
 
 * Tested on a Pixel 7a (Android 17): boots to the menus at full speed (60 fps) at 2x internal
   resolution with PGXP.
-* Input: game controllers over USB or Bluetooth (SDL mappings). No touch controls yet.
+* Fills the whole screen (widescreen at the phone's own aspect, 20:9 on a Pixel 7a) with the
+  emulated CPU at 200% so the wider view doesn't cost game frames.
+* Input: game controllers over USB or Bluetooth (SDL mappings). Click the left stick to cycle
+  4:3 / 16:9 / fill and the right stick to cycle 1x / 2x / 4x. No touch controls yet.
 * Settings, memory cards and the log (`ctr.log`) live next to the disc image in the app folder.
 
 ## Building
@@ -35,6 +38,15 @@ adb push "CTR - Crash Team Racing (USA).cue" "CTR - Crash Team Racing (USA).bin"
 
 The folder must be created by the app (not by `adb shell mkdir`), otherwise the app cannot read
 it. Android's file manager can also copy files there on most devices.
+
+## Testing from the PC
+
+Command-line options can be passed through the launch intent, e.g. scripted input and verbose
+logging (the log is `ctr.log` in the app folder):
+
+```
+adb shell "am start -n io.github.lorenzoalfaro.ctrrecomp/.CTRActivity -e args '-v --keys 300:start'"
+```
 
 ## License
 
