@@ -23,6 +23,12 @@ FetchContent_MakeAvailable(SDL2)
 # 16 KB page alignment (required on devices with 16 KB pages)
 add_link_options(-Wl,-z,max-page-size=16384)
 
+# 32-bit ARM (Android TVs): ARM instead of Thumb-2 code and scheduling for the Cortex-A55 most
+# current TV chips use (tuning only, the code still runs on any ARMv7 CPU)
+if(ANDROID_ABI STREQUAL "armeabi-v7a")
+  add_compile_options(-marm -mtune=cortex-a55)
+endif()
+
 # ---- generated code ---------------------------------------------------------
 file(GLOB GEN_SOURCES "${GEN_DIR}/funcs_*.c" "${GEN_DIR}/func_table.c")
 add_library(ctr_gen STATIC ${GEN_SOURCES})

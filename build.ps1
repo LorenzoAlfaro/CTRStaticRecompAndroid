@@ -13,7 +13,9 @@ param(
     [string]$CMakeVersion = "3.31.6",
     [string]$BuildTools = "36.0.0",
     [string]$Platform = "android-36",
-    [string]$Jdk = "C:\Program Files\Android\Android Studio\jbr"
+    [string]$Jdk = "C:\Program Files\Android\Android Studio\jbr",
+    [string[]]$Abis = @("arm64-v8a", "armeabi-v7a"),
+    [switch]$NoStrip  # keep symbols (for profiling with simpleperf)
 )
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
@@ -25,6 +27,10 @@ $androidJar = "$Sdk\platforms\$Platform\android.jar"
 $adb = "$Sdk\platform-tools\adb.exe"
 $env:JAVA_HOME = $Jdk
 $env:PATH = "$Sdk\cmake\$CMakeVersion\bin;$Jdk\bin;$env:PATH"
+# prefer a real Python over the Windows Store "python" alias
+foreach ($d in "$env:LOCALAPPDATA\Python\bin", "$env:LOCALAPPDATA\Programs\Python\Python314") {
+    if (Test-Path "$d\python.exe") { $env:PATH = "$d;$env:PATH"; break }
+}
 foreach ($p in $ndk, $bt, $androidJar, "$Ctr\data\SCUS_944.26") {
     if (-not (Test-Path $p)) { throw "missing: $p" }
 }
@@ -36,18 +42,25 @@ if (Test-Path "$Ctr\data\syms926.txt") { $syms = @("--syms", "$Ctr\data\syms926.
 python "$Ctr\gen\recomp.py" --data "$Ctr\data" --out build/gen @syms | Out-Null
 if ($LASTEXITCODE) { throw "recompiler failed" }
 
-# 2. native libraries (arm64-v8a)
-cmake -S . -B build/native -G Ninja -DCMAKE_BUILD_TYPE=Release `
-    "-DCMAKE_TOOLCHAIN_FILE=$ndk\build\cmake\android.toolchain.cmake" `
-    -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 "-DCTR_ROOT=$Ctr" "-DGEN_DIR=$PWD/build/gen" | Out-Null
-if ($LASTEXITCODE) { throw "cmake configure failed" }
-cmake --build build/native -j $env:NUMBER_OF_PROCESSORS
-if ($LASTEXITCODE) { throw "native build failed" }
-$libdir = "build/apk/lib/arm64-v8a"
-New-Item -ItemType Directory -Force $libdir | Out-Null
+# 2. native libraries, one build per ABI (arm64-v8a: phones; armeabi-v7a: 32-bit devices such
+#    as most Android TVs)
 $strip = "$ndk\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-strip.exe"
-& $strip -o "$libdir/libSDL2.so" (Get-ChildItem build/native -Recurse -Filter libSDL2.so | Select-Object -First 1).FullName
-& $strip -o "$libdir/libmain.so" build/native/libmain.so
+$libs = @()
+foreach ($abi in $Abis) {
+    $bdir = if ($abi -eq "arm64-v8a") { "build/native" } else { "build/native-$abi" }
+    cmake -S . -B $bdir -G Ninja -DCMAKE_BUILD_TYPE=Release `
+        "-DCMAKE_TOOLCHAIN_FILE=$ndk\build\cmake\android.toolchain.cmake" `
+        "-DANDROID_ABI=$abi" -DANDROID_PLATFORM=android-26 "-DCTR_ROOT=$Ctr" "-DGEN_DIR=$PWD/build/gen" | Out-Null
+    if ($LASTEXITCODE) { throw "cmake configure failed ($abi)" }
+    cmake --build $bdir -j $env:NUMBER_OF_PROCESSORS
+    if ($LASTEXITCODE) { throw "native build failed ($abi)" }
+    $libdir = "build/apk/lib/$abi"
+    New-Item -ItemType Directory -Force $libdir | Out-Null
+    $stripArgs = if ($NoStrip) { @("--strip-debug") } else { @() }
+    & $strip @stripArgs -o "$libdir/libSDL2.so" (Get-ChildItem $bdir -Recurse -Filter libSDL2.so | Select-Object -First 1).FullName
+    & $strip @stripArgs -o "$libdir/libmain.so" "$bdir/libmain.so"
+    $libs += "$libdir/libSDL2.so", "$libdir/libmain.so"
+}
 
 # 3. Java: SDL's activity/glue classes + ours
 $sdlJava = "build/native/_deps/sdl2-src/android-project/app/src/main/java"
@@ -70,9 +83,12 @@ $classes = Get-ChildItem build/java/classes -Recurse -Filter *.class | ForEach-O
 if ($LASTEXITCODE) { throw "d8 failed" }
 
 # 4. package, align, sign
-& "$bt\aapt2.exe" link -o build/base.apk --manifest AndroidManifest.xml -I $androidJar
+# resources: just the Android TV home-screen banner
+& "$bt\aapt2.exe" compile --dir res -o build/res.zip
+if ($LASTEXITCODE) { throw "aapt2 compile failed" }
+& "$bt\aapt2.exe" link -o build/base.apk --manifest AndroidManifest.xml -I $androidJar build/res.zip
 if ($LASTEXITCODE) { throw "aapt2 link failed" }
-python tools/package_apk.py build/base.apk build/unaligned.apk build/java/classes.dex "$libdir/libSDL2.so" "$libdir/libmain.so"
+python tools/package_apk.py build/base.apk build/unaligned.apk build/java/classes.dex @libs
 if ($LASTEXITCODE) { throw "packaging failed" }
 & "$bt\zipalign.exe" -P 16 -f 4 build/unaligned.apk build/aligned.apk
 if ($LASTEXITCODE) { throw "zipalign failed" }
