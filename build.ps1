@@ -56,9 +56,15 @@ foreach ($abi in $Abis) {
     if ($LASTEXITCODE) { throw "native build failed ($abi)" }
     $libdir = "build/apk/lib/$abi"
     New-Item -ItemType Directory -Force $libdir | Out-Null
-    $stripArgs = if ($NoStrip) { @("--strip-debug") } else { @() }
-    & $strip @stripArgs -o "$libdir/libSDL2.so" (Get-ChildItem $bdir -Recurse -Filter libSDL2.so | Select-Object -First 1).FullName
-    & $strip @stripArgs -o "$libdir/libmain.so" "$bdir/libmain.so"
+    $sdl = (Get-ChildItem $bdir -Recurse -Filter libSDL2.so | Select-Object -First 1).FullName
+    if ($NoStrip) {
+        # keep the symbol tables so simpleperf can name functions
+        Copy-Item $sdl "$libdir/libSDL2.so" -Force
+        Copy-Item "$bdir/libmain.so" "$libdir/libmain.so" -Force
+    } else {
+        & $strip -o "$libdir/libSDL2.so" $sdl
+        & $strip -o "$libdir/libmain.so" "$bdir/libmain.so"
+    }
     $libs += "$libdir/libSDL2.so", "$libdir/libmain.so"
 }
 
