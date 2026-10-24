@@ -42,7 +42,7 @@ set(RT "${CTR_ROOT}/runtime")
 add_library(main SHARED
   ${RT}/main.cpp ${RT}/cpu.cpp ${RT}/hw.cpp ${RT}/bios.cpp ${RT}/gte.cpp ${RT}/gpu.cpp ${RT}/gpu_gl.cpp
   ${RT}/spu.cpp ${RT}/cdrom.cpp ${RT}/sio.cpp ${RT}/mdec.cpp ${RT}/crash.cpp ${RT}/hooks.cpp
-  ${RT}/pgxp.cpp ${RT}/jmp.c)
+  ${RT}/pgxp.cpp ${RT}/host_prof.cpp ${RT}/jmp.c)
 target_include_directories(main PRIVATE "${RT}")
 target_compile_options(main PRIVATE -O2 -fwrapv -fno-strict-aliasing -Wall -Wno-unused-variable -Wno-unused-function)
 target_link_libraries(main PRIVATE ctr_gen SDL2::SDL2 android log)
