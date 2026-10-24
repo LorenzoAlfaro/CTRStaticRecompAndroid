@@ -40,7 +40,7 @@ target_compile_options(ctr_gen PRIVATE -O2 -fwrapv -fno-strict-aliasing -w)
 # ---- runtime: libmain.so (SDL calls SDL_main in it) --------------------------
 set(RT "${CTR_ROOT}/runtime")
 add_library(main SHARED
-  ${RT}/main.cpp ${RT}/cpu.cpp ${RT}/hw.cpp ${RT}/bios.cpp ${RT}/gte.cpp ${RT}/gpu.cpp
+  ${RT}/main.cpp ${RT}/cpu.cpp ${RT}/hw.cpp ${RT}/bios.cpp ${RT}/gte.cpp ${RT}/gpu.cpp ${RT}/gpu_gl.cpp
   ${RT}/spu.cpp ${RT}/cdrom.cpp ${RT}/sio.cpp ${RT}/mdec.cpp ${RT}/crash.cpp ${RT}/hooks.cpp
   ${RT}/pgxp.cpp ${RT}/jmp.c)
 target_include_directories(main PRIVATE "${RT}")
