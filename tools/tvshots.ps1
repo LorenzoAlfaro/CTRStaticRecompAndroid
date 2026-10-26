@@ -1,6 +1,6 @@
 # Run the reference race script on a device with screenshots every 300 frames, pull them and
 # compare them with a reference directory of the PC build (tools/imgdiff.py).
-#   & .\tools\tvshots.ps1 -Device 192.168.0.224:5555 -Options "--renderer gl --scale 1 --no-pgxp" `
+#   & .\tools\tvshots.ps1 -Device <device-ip>:5555 -Options "--renderer gl --scale 1 --no-pgxp" `
 #       -Ref ..\CTRStaticRecomp\build\n43 -Out ..\CTRStaticRecomp\build\tv_gl1
 param(
     [Parameter(Mandatory)][string]$Device,

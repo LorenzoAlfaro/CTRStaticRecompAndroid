@@ -1,6 +1,6 @@
 # Benchmark the installed app on a device: skip the intros, start an arcade race on Crash Cove,
 # run in turbo (no frame pacing) and print the profile lines from the race.
-#   pwsh tools/bench.ps1 -Device 192.168.0.224:5555 [-Options "--scale 1"] [-Frames 4800]
+#   pwsh tools/bench.ps1 -Device <device-ip>:5555 [-Options "--scale 1"] [-Frames 4800]
 param(
     [Parameter(Mandatory)][string]$Device,
     [string]$Options = "",
